@@ -4,12 +4,12 @@ services:
     env: python
     region: frankfurt
     plan: free
-    buildCommand: bash render-build.sh
-    startCommand: bash start.sh
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: PORT
         value: 10000
-      - key: PYTHON_VERSION
-        value: 3.11.0
     autoDeploy: true
