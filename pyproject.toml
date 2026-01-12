@@ -6,7 +6,7 @@ authors = [
     {name = "Mamadou", email = "kmma.960@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11,<3.12"  # ← TRÈS IMPORTANT : 3.11 au lieu de 3.13
+requires-python = ">=3.11"  # ← TRÈS IMPORTANT : 3.11 au lieu de 3.13
 
 dependencies = [
     "fastapi>=0.104.1,<0.105.0",
