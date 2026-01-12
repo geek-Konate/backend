@@ -1,9 +1,13 @@
 import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# Ajouter le chemin pour les imports relatifs
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Configuration DATABASE_URL pour Render
 DATABASE_URL = os.getenv(
@@ -34,6 +38,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ⭐⭐ IMPORT CORRECT POUR VOTRE STRUCTURE ⭐⭐
+try:
+    # Essayer d'importer depuis app.api.endpoints
+    from app.api.endpoints import router as api_router
+
+    app.include_router(api_router, prefix="/api")
+    print("✅ Router API chargé avec succès depuis app.api.endpoints")
+except ImportError as e:
+    print(f"❌ Erreur chargement router: {e}")
+
+    # Essayer une autre approche
+    try:
+        # Importer le module directement
+        import importlib
+
+        endpoints_module = importlib.import_module("app.api.endpoints")
+        app.include_router(endpoints_module.router, prefix="/api")
+        print("✅ Router chargé via importlib")
+    except Exception as e2:
+        print(f"❌ Échec import alternatif: {e2}")
+        print("⚠️  Les routes API (/api/projects, etc.) ne seront pas disponibles")
+
+
 @app.get("/")
 def root():
     return {
@@ -43,9 +70,11 @@ def root():
         "docs": "/docs"
     }
 
+
 @app.get("/api/health")
 def health():
     return {"status": "healthy", "service": "portfolio-backend"}
+
 
 # Créer les tables au démarrage
 try:
@@ -57,4 +86,5 @@ except Exception as e:
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=port)
