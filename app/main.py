@@ -103,6 +103,10 @@ def root():
 def health():
     return {"status": "healthy", "service": "portfolio-backend"}
 
+@app.get("/api/ping")
+def ping():
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
 
 # Créer les tables au démarrage
 try:
