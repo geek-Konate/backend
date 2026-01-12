@@ -40,18 +40,20 @@ try:
 except Exception as e:
     print(f"⚠️  Erreur configuration static files: {e}")
 # CORS
+
+
+
+
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://portfolio-frontend-p72r.onrender.com",
-        "http://localhost:5173"
-    ],
-    allow_credentials=True,
+    allow_origins=["https://portfolio-frontend-p72r.onrender.com"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 
 
 # ⭐⭐ IMPORT CORRECT POUR VOTRE STRUCTURE ⭐⭐
