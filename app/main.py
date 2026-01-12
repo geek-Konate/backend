@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from fastapi.staticfiles import StaticFiles
 
 # Ajouter le chemin pour les imports relatifs
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -29,10 +30,28 @@ Base = declarative_base()
 # FastAPI app
 app = FastAPI()
 
+# Servir les fichiers statiques (uploads)
+try:
+    # Créer le dossier si nécessaire
+    os.makedirs("static/uploads/screenshots", exist_ok=True)
+    # Monter le dossier static
+    app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
+    print("✅ Static files serving configuré")
+except Exception as e:
+    print(f"⚠️  Erreur configuration static files: {e}")
 # CORS
+# Liste COMPLÈTE des origines autorisées
+origins = [
+    "https://portfolio-frontend-p72r.onrender.com",
+    "http://portfolio-frontend-p72r.onrender.com",
+    "https://portfolio-frontend-p72r.onrender.com",  # avec www
+    # Pour tout le monde (moins sécurisé mais fonctionnel)
+    "*",  # ⚠️ À METTRE TEMPORAIREMENT POUR TESTER
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
