@@ -123,11 +123,20 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
     uploaded_urls = []
 
     for file in files:
-        public_url = upload_image(file)
+        ext = file.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+
+        content = await file.read()
+
+        supabase.storage.from_("screenshots").upload(
+            filename,
+            content,
+            {"content-type": file.content_type}
+        )
+
+        public_url = supabase.storage.from_("screenshots").get_public_url(filename)
+
         uploaded_urls.append(public_url)
-
-    return {"urls": uploaded_urls}
-
 
     return {"urls": uploaded_urls}
 
