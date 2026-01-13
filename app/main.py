@@ -47,20 +47,29 @@ except Exception as e:
 from fastapi.middleware.cors import CORSMiddleware
 
 # Liste COMPLÈTE des origines autorisées
+# Liste COMPLÈTE des origines autorisées
 origins = [
+    # Production
     "https://portfolio-frontend-p72r.onrender.com",
     "http://portfolio-frontend-p72r.onrender.com",
-    "https://portfolio-frontend-p72r.onrender.com",  # avec www
-    # Pour tout le monde (moins sécurisé mais fonctionnel)
-    "*",  # ⚠️ À METTRE TEMPORAIREMENT POUR TESTER
+
+    # Développement local
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+
+    # Pour tout autoriser (temporaire)
+    "*",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
