@@ -14,29 +14,14 @@ BUCKET = "portfolio-images"
 
 
 def upload_image(file):
-    # nom unique
     ext = file.filename.split(".")[-1]
     filename = f"{uuid.uuid4()}.{ext}"
 
-    # lire le contenu
-    content = file.file.read()
-
-    # upload dans Supabase
-    result = supabase.storage.from_(BUCKET).upload(
+    supabase.storage.from_("screenshots").upload(
         filename,
-        content,
-        {
-            "content-type": file.content_type,
-            "cache-control": "3600",
-            "upsert": False
-        }
+        file.file.read(),
+        {"content-type": file.content_type}
     )
 
-    # Supabase renvoie une erreur si ça échoue
-    if hasattr(result, "error") and result.error:
-        raise RuntimeError(result.error.message)
+    return supabase.storage.from_("screenshots").get_public_url(filename).public_url
 
-    # URL publique
-    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{filename}"
-
-    return public_url
