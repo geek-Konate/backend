@@ -13,8 +13,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
-from app.storage import supabase
-import uuid
 
 load_dotenv()
 router = APIRouter()
@@ -91,55 +89,61 @@ async def update_project_screenshots(project_id: int, new_files: List[UploadFile
 # suppression d'un project
 @router.delete("/projects/{project_id}")
 def delete_project(project_id: int, db: Session = Depends(get_db)):
+    # supprimer un project et ses screensht
+    # recupérer le project
     db_project = crud.get_project(db, project_id=project_id)
-
     if not db_project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # screenshots = liste d'URL publiques Supabase
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    # suppression des fichiers screenshot liée au project
     if db_project.screenshots:
-        for url in db_project.screenshots:
-            # on extrait le path dans le bucket
-            # https://xxxx.supabase.co/storage/v1/object/public/screenshots/abc.png
-            path = url.split("/screenshots/")[-1]
+        for screenshot in db_project.screenshots:
+            if screenshot and isinstance(screenshot, str):
+                # extraire le nom du fichier de l'url
+                filename = screenshot.split("/")[-1]
+                file_path = f"static/uploads/screenshots/{filename}"
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f"Deleted screenshot: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
 
-            try:
-                supabase.storage.from_("screenshots").remove([path])
-            except Exception as e:
-                print(f"Supabase delete error: {e}")
-
-    crud.delete_project(db, project_id)
-
+    # suprimer de la base de données
+    crud.delete_project(db, project_id=project_id)
     return {
-        "message": "Project deleted",
-        "id": project_id
+        "message": "Project deleted successfully",
+        "deleted_id": project_id
     }
-
 
 
 # pour gerer upload
 @router.post("/upload/screenshots")
 async def upload_screenshots(files: List[UploadFile] = File(...)):
     uploaded_urls = []
+    UPLOAD_DIR = "static/uploads/screenshots"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     for file in files:
-        ext = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4()}.{ext}"
+        # Genère un nom de fichier unique
+        file_extension = file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
+        # Chemin où sauvegarder
+        file_path = f"{UPLOAD_DIR}/{unique_filename}"
+
+        # Sauvegarde le fichier
         content = await file.read()
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
 
-        supabase.storage.from_("screenshots").upload(
-            filename,
-            content,
-            {"content-type": file.content_type}
-        )
-
-        public_url = supabase.storage.from_("screenshots").get_public_url(filename)
-
-        uploaded_urls.append(public_url)
+        # URL d'accès - PAS BESOIN DU /static ici car on monte /uploads
+        file_url = f"/uploads/screenshots/{unique_filename}"
+        uploaded_urls.append(file_url)
 
     return {"urls": uploaded_urls}
-
 
 
 @router.get("/skills")
