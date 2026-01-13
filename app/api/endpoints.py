@@ -163,8 +163,11 @@ def get_skills(db: Session = Depends(get_db)):
             {"id": 5, "name": "Git", "category": "tools", "level": 4},
         ]
 
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))  # SSL Gmail
 
-# formulaire
 @router.post("/contact")
 async def submit_contact_form(contact: schemas.ContactForm):
     try:
@@ -173,31 +176,25 @@ async def submit_contact_form(contact: schemas.ContactForm):
         # 1. Préparer email
         msg = MIMEMultipart()
         msg['Subject'] = f"📩 Portfolio: {contact.topic}"
-
-        # IMPORTANT: Reply-To pour pouvoir répondre au visiteur
-        msg['From'] = "Portfolio Mamadou <kmma.960@gmail.com>"
-        msg['To'] = "kmma.960@gmail.com"  # TOI
+        msg['From'] = f"Portfolio <{EMAIL_USER}>"
+        msg['To'] = EMAIL_USER  # Toi
         msg['Reply-To'] = f"{contact.first_name} {contact.last_name} <{contact.email}>"
 
         # 2. Contenu
         html = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
             <h2 style="color: #2563eb;">Nouveau message portfolio</h2>
-
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
                 <p><strong>👤 Visiteur:</strong> {contact.first_name} {contact.last_name}</p>
                 <p><strong>📧 Email:</strong> {contact.email}</p>
                 <p><strong>📱 Téléphone:</strong> {contact.phone or 'Non fourni'}</p>
                 <p><strong>🏷️ Sujet:</strong> {contact.topic}</p>
             </div>
-
             <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-left: 4px solid #2563eb;">
                 <h4>💬 Message:</h4>
                 <p style="white-space: pre-line;">{contact.message}</p>
             </div>
-
             <hr style="margin: 30px 0;">
-
             <div style="font-size: 12px; color: #6b7280;">
                 <p>📅 Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
                 <p>⚠️ <strong>Pour répondre:</strong> Clique sur "Répondre" dans ton client email.</p>
@@ -205,16 +202,14 @@ async def submit_contact_form(contact: schemas.ContactForm):
             </div>
         </div>
         """
-
         msg.attach(MIMEText(html, 'html'))
 
-        # 3. Envoyer
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login("kmma.960@gmail.com", "ywrkqiysxkdixxld")
+        # 3. Envoyer email
+        with smtplib.SMTP_SSL(EMAIL_HOST, EMAIL_PORT) as server:
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
             server.send_message(msg)
 
         print(f"✅ Email envoyé avec Reply-To: {contact.email}")
-
         return {"success": True}
 
     except Exception as e:
