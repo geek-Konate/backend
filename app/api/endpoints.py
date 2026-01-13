@@ -161,7 +161,8 @@ def get_skills(db: Session = Depends(get_db)):
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))  # SSL Gmail
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))  # CHANGE DE 465 À 587
+EMAIL_USE_TLS = True  # AJOUTE CETTE LIGNE
 
 @router.post("/contact")
 async def submit_contact_form(contact: schemas.ContactForm):
@@ -200,7 +201,8 @@ async def submit_contact_form(contact: schemas.ContactForm):
         msg.attach(MIMEText(html, 'html'))
 
         # 3. Envoyer email
-        with smtplib.SMTP_SSL(EMAIL_HOST, EMAIL_PORT) as server:
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+            server.starttls()  # Démarre la connexion sécurisée
             server.login(EMAIL_USER, EMAIL_PASSWORD)
             server.send_message(msg)
 
@@ -208,7 +210,7 @@ async def submit_contact_form(contact: schemas.ContactForm):
         return {"success": True}
 
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        print(f"❌ Erreur SMTP: {str(e)}")
         return {"success": False}
 
 
