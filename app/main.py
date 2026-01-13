@@ -1,131 +1,102 @@
 import os
 import sys
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from fastapi.staticfiles import StaticFiles
 
-# Ajouter le chemin pour les imports relatifs
+# Permet les imports relatifs
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Configuration DATABASE_URL pour Render
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://portfolio_user:03trhKSbCvRNAgSzzSdIg7dsvjBJPh3S@dpg-d5hql7fpm1nc73ea5540-a.frankfurt-postgres.render.com:5432/portfolio_db_lc12"
-)
+# 🔥 On importe la base et l'engine depuis database.py
+from app.database import engine, Base
 
-# S'assurer que c'est postgresql:// et non postgres://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# ────────────────────────────────────────────────
+# FastAPI
+# ────────────────────────────────────────────────
 
-print(f"🔗 Connexion à la base: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else DATABASE_URL}")
-
-# Créer l'engine SQLAlchemy
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# FastAPI app
 app = FastAPI()
 
-# Servir les fichiers statiques (uploads)
+# ────────────────────────────────────────────────
+# Static files (uploads)
+# ────────────────────────────────────────────────
+
 try:
-    # Créer le dossier si nécessaire
     os.makedirs("static/uploads/screenshots", exist_ok=True)
-    # Monter le dossier static
     app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
     print("✅ Static files serving configuré")
 except Exception as e:
-    print(f"⚠️  Erreur configuration static files: {e}")
+    print(f"⚠️ Erreur configuration static files: {e}")
+
+# ────────────────────────────────────────────────
 # CORS
+# ────────────────────────────────────────────────
 
-
-
-
-from fastapi.middleware.cors import CORSMiddleware
-
-# Liste COMPLÈTE des origines autorisées
-# Liste COMPLÈTE des origines autorisées
 origins = [
-    # Production
     "https://portfolio-frontend-p72r.onrender.com",
     "http://portfolio-frontend-p72r.onrender.com",
 
-    # Développement local
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-
-    # Pour tout autoriser (temporaire)
-    "*",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
+# ────────────────────────────────────────────────
+# Routes API
+# ────────────────────────────────────────────────
 
-
-
-# ⭐⭐ IMPORT CORRECT POUR VOTRE STRUCTURE ⭐⭐
 try:
-    # Essayer d'importer depuis app.api.endpoints
     from app.api.endpoints import router as api_router
-
     app.include_router(api_router, prefix="/api")
-    print("✅ Router API chargé avec succès depuis app.api.endpoints")
-except ImportError as e:
+    print("✅ Router API chargé")
+except Exception as e:
     print(f"❌ Erreur chargement router: {e}")
 
-    # Essayer une autre approche
-    try:
-        # Importer le module directement
-        import importlib
-
-        endpoints_module = importlib.import_module("app.api.endpoints")
-        app.include_router(endpoints_module.router, prefix="/api")
-        print("✅ Router chargé via importlib")
-    except Exception as e2:
-        print(f"❌ Échec import alternatif: {e2}")
-        print("⚠️  Les routes API (/api/projects, etc.) ne seront pas disponibles")
-
+# ────────────────────────────────────────────────
+# Health & root
+# ────────────────────────────────────────────────
 
 @app.get("/")
 def root():
     return {
         "message": "🚀 Portfolio Backend API",
         "status": "online",
-        "database": "PostgreSQL on Render",
         "docs": "/docs"
     }
 
-
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "service": "portfolio-backend"}
+    return {"status": "healthy"}
 
 @app.get("/api/ping")
 def ping():
-    return {"status": "alive", "timestamp": datetime.now().isoformat()}
+    return {"status": "alive", "time": datetime.utcnow().isoformat()}
 
+# ────────────────────────────────────────────────
+# Création des tables
+# ────────────────────────────────────────────────
 
-# Créer les tables au démarrage
 try:
     Base.metadata.create_all(bind=engine)
-    print("✅ Tables créées avec succès")
+    print("✅ Tables synchronisées avec la base")
 except Exception as e:
-    print(f"⚠️  Erreur création tables: {e}")
+    print(f"❌ Erreur création tables: {e}")
+
+# ────────────────────────────────────────────────
+# Uvicorn
+# ────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
