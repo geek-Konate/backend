@@ -228,3 +228,29 @@ async def mobile_test():
             "skills": "/api/skills"
         }
     }
+
+
+@router.get("/test-email")
+async def test_email():
+    """Test la connexion SMTP"""
+    try:
+        # Test de connexion sans envoyer d'email
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            print("✅ Connexion SMTP réussie")
+            server.quit()
+
+        return {
+            "success": True,
+            "message": "Connexion SMTP OK",
+            "host": EMAIL_HOST,
+            "port": EMAIL_PORT
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "host": EMAIL_HOST,
+            "port": EMAIL_PORT
+        }
