@@ -13,18 +13,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
-
 load_dotenv()
 router = APIRouter()
-
-
 @router.get("/projects", response_model=List[schemas.Project])
 def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     projects = crud.get_projects(db, skip=skip, limit=limit)
 
     return projects
-
-
 @router.post("/projects", response_model=schemas.Project)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
     return crud.create_project(db=db, project=project)
