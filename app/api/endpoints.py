@@ -5,6 +5,8 @@ from fastapi import File, UploadFile
 import shutil
 import uuid
 import os
+
+from v import response
 from .. import crud, schemas
 from ..database import get_db
 from ..models import Skill
@@ -13,6 +15,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
+
+from ..storage import supabase
+
 load_dotenv()
 router = APIRouter()
 @router.get("/projects", response_model=List[schemas.Project])
@@ -98,13 +103,14 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
             if screenshot and isinstance(screenshot, str):
                 # extraire le nom du fichier de l'url
                 filename = screenshot.split("/")[-1]
-                file_path = f"static/uploads/screenshots/{filename}"
+
                 try:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        print(f"Deleted screenshot: {file_path}")
+                    res = supabase.storage.from_('portfolio').remove([filename])
+                    if res.get('error'):
+                        print(f"Failed to remove {filename} : {res['error']}")
+
                 except Exception as e:
-                    print(f"Error deleting file {file_path}: {e}")
+                    print(f"Exception deleting {filename}: {e}")
 
     # suprimer de la base de données
     crud.delete_project(db, project_id=project_id)
@@ -118,25 +124,23 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 @router.post("/upload/screenshots")
 async def upload_screenshots(files: List[UploadFile] = File(...)):
     uploaded_urls = []
-    UPLOAD_DIR = "static/uploads/screenshots"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
     for file in files:
         # Genère un nom de fichier unique
         file_extension = file.filename.split('.')[-1]
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
-        # Chemin où sauvegarder
-        file_path = f"{UPLOAD_DIR}/{unique_filename}"
-
-        # Sauvegarde le fichier
+        # lire le contenu du fichier
         content = await file.read()
-        with open(file_path, "wb") as buffer:
-            buffer.write(content)
+        # Envoyer vers Supabase Storage
+        response = supabase.storage.from_('portfolio').upload(unique_filename, content)
+        if response.get("error"):
+            return {"error": response["error"]}
 
         # URL d'accès - PAS BESOIN DU /static ici car on monte /uploads
-        file_url = f"/uploads/screenshots/{unique_filename}"
-        uploaded_urls.append(file_url)
+        url = supabase.storage.from_('portfolio').get_public_url(unique_filename)
+        uploaded_urls.append(url['publicURL'])
 
     return {"urls": uploaded_urls}
 
