@@ -6,7 +6,7 @@ import shutil
 import uuid
 import os
 
-from v import response
+
 from .. import crud, schemas
 from ..database import get_db
 from ..models import Skill
