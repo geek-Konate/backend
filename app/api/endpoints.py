@@ -10,6 +10,7 @@ import os
 from .. import crud, schemas
 from ..database import get_db
 from ..models import Skill
+import socket 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -171,20 +172,26 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))  # CHANGE DE 465 À 587
 EMAIL_USE_TLS = True  # AJOUTE CETTE LIGNE
-
 @router.post("/contact")
 async def submit_contact_form(contact: schemas.ContactForm):
     try:
         print(f"📨 {contact.first_name} ({contact.email})")
 
+        # Log pour debug
+        print(f"🔧 Configuration SMTP:")
+        print(f"  Host: {EMAIL_HOST}")
+        print(f"  Port: {EMAIL_PORT}")
+        print(f"  User: {EMAIL_USER}")
+        print(f"  TLS: {EMAIL_USE_TLS}")
+
         # 1. Préparer email
         msg = MIMEMultipart()
         msg['Subject'] = f"📩 Portfolio: {contact.topic}"
         msg['From'] = f"Portfolio <{EMAIL_USER}>"
-        msg['To'] = EMAIL_USER  # Toi
+        msg['To'] = EMAIL_USER  # Vous recevez l'email
         msg['Reply-To'] = f"{contact.first_name} {contact.last_name} <{contact.email}>"
 
-        # 2. Contenu
+        # 2. Contenu HTML
         html = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
             <h2 style="color: #2563eb;">Nouveau message portfolio</h2>
@@ -202,24 +209,56 @@ async def submit_contact_form(contact: schemas.ContactForm):
             <div style="font-size: 12px; color: #6b7280;">
                 <p>📅 Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
                 <p>⚠️ <strong>Pour répondre:</strong> Clique sur "Répondre" dans ton client email.</p>
-                <p>   La réponse ira automatiquement à: {contact.email}</p>
+                <p>La réponse ira automatiquement à: {contact.email}</p>
             </div>
         </div>
         """
+
+        # Alternative texte simple pour debug
+        text = f"""
+        Nouveau message portfolio:
+
+        Nom: {contact.first_name} {contact.last_name}
+        Email: {contact.email}
+        Téléphone: {contact.phone or 'Non fourni'}
+        Sujet: {contact.topic}
+
+        Message:
+        {contact.message}
+
+        ---
+        Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
+        """
+
+        # Ajouter les deux versions
+        msg.attach(MIMEText(text, 'plain'))
         msg.attach(MIMEText(html, 'html'))
 
-        # 3. Envoyer email
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        # 3. Envoyer email avec timeout
+        print(f"📤 Connexion SMTP à {EMAIL_HOST}:{EMAIL_PORT}...")
+
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=10) as server:
+            print(f"🔒 Démarrage TLS...")
             server.starttls()  # Démarre la connexion sécurisée
+
+            print(f"🔑 Authentification...")
             server.login(EMAIL_USER, EMAIL_PASSWORD)
+
+            print(f"🚀 Envoi du message...")
             server.send_message(msg)
+            print(f"✅ Email envoyé avec succès!")
 
-        print(f"✅ Email envoyé avec Reply-To: {contact.email}")
-        return {"success": True}
+        return {"success": True, "message": "Email envoyé avec succès"}
 
-    except Exception as e:
+    except smtplib.SMTPException as e:
         print(f"❌ Erreur SMTP: {str(e)}")
-        return {"success": False}
+        return {"success": False, "error": f"Erreur SMTP: {str(e)}"}
+    except socket.error as e:
+        print(f"❌ Erreur réseau: {str(e)}")
+        return {"success": False, "error": f"Erreur réseau: {str(e)}"}
+    except Exception as e:
+        print(f"❌ Erreur inattendue: {str(e)}")
+        return {"success": False, "error": f"Erreur: {str(e)}"}
 
 
 @router.get("/mobile-test")
