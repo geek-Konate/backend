@@ -19,7 +19,8 @@ dependencies = [
     "email-validator>=2.3.0,<3.0.0",
     "python-dotenv>=1.2.1,<2.0.0",
     "psycopg2-binary>=2.9.11,<3.0.0",
-    "supabase (>=2.27.2,<3.0.0)"
+    "supabase (>=2.27.2,<3.0.0)",
+    "resend (>=2.19.0,<3.0.0)"
 ]
 
 # SUPPRIMEZ ou MODIFIEZ cette section :

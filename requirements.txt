@@ -1,6 +1,6 @@
 # requirements.txt - AJOUTEZ cette ligne
 supabase==2.27.2 # ← AJOUTEZ CETTE LIGNE !
-
+resend==2.19.0
 # Vos autres dépendances existantes...
 annotated-doc==0.0.4
 annotated-types==0.7.0

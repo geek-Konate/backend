@@ -10,7 +10,7 @@ import os
 from .. import crud, schemas
 from ..database import get_db
 from ..models import Skill
-import socket 
+import socket
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -167,97 +167,75 @@ def get_skills(db: Session = Depends(get_db)):
             {"id": 5, "name": "Git", "category": "tools", "level": 4},
         ]
 
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))  # CHANGE DE 465 À 587
-EMAIL_USE_TLS = True  # AJOUTE CETTE LIGNE
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "Portfolio <onboarding@resend.dev>")
+EMAIL_TO = os.getenv("EMAIL_TO")
+
+
 @router.post("/contact")
 async def submit_contact_form(contact: schemas.ContactForm):
     try:
         print(f"📨 {contact.first_name} ({contact.email})")
 
-        # Log pour debug
-        print(f"🔧 Configuration SMTP:")
-        print(f"  Host: {EMAIL_HOST}")
-        print(f"  Port: {EMAIL_PORT}")
-        print(f"  User: {EMAIL_USER}")
-        print(f"  TLS: {EMAIL_USE_TLS}")
+        # Vérifier la configuration
+        if not RESEND_API_KEY:
+            print("❌ RESEND_API_KEY non configurée")
+            return {"success": False, "error": "Configuration Resend manquante"}
 
-        # 1. Préparer email
-        msg = MIMEMultipart()
-        msg['Subject'] = f"📩 Portfolio: {contact.topic}"
-        msg['From'] = f"Portfolio <{EMAIL_USER}>"
-        msg['To'] = EMAIL_USER  # Vous recevez l'email
-        msg['Reply-To'] = f"{contact.first_name} {contact.last_name} <{contact.email}>"
+        # Importer Resend
+        import resend
 
-        # 2. Contenu HTML
-        html = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px;">
-            <h2 style="color: #2563eb;">Nouveau message portfolio</h2>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
-                <p><strong>👤 Visiteur:</strong> {contact.first_name} {contact.last_name}</p>
-                <p><strong>📧 Email:</strong> {contact.email}</p>
-                <p><strong>📱 Téléphone:</strong> {contact.phone or 'Non fourni'}</p>
-                <p><strong>🏷️ Sujet:</strong> {contact.topic}</p>
+        # Configurer Resend
+        resend.api_key = RESEND_API_KEY
+
+        # Envoyer l'email
+        response = resend.Emails.send({
+            "from": RESEND_FROM_EMAIL,
+            "to": [EMAIL_TO],
+            "reply_to": f"{contact.first_name} {contact.last_name} <{contact.email}>",
+            "subject": f"📩 Portfolio: {contact.topic}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h2 style="color: #2563eb;">Nouveau message portfolio</h2>
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+                    <p><strong>👤 Visiteur:</strong> {contact.first_name} {contact.last_name}</p>
+                    <p><strong>📧 Email:</strong> {contact.email}</p>
+                    <p><strong>📱 Téléphone:</strong> {contact.phone or 'Non fourni'}</p>
+                    <p><strong>🏷️ Sujet:</strong> {contact.topic}</p>
+                </div>
+                <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-left: 4px solid #2563eb;">
+                    <h4>💬 Message:</h4>
+                    <p style="white-space: pre-line;">{contact.message}</p>
+                </div>
+                <hr style="margin: 30px 0;">
+                <div style="font-size: 12px; color: #6b7280;">
+                    <p>📅 Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
+                    <p>⚠️ <strong>Pour répondre:</strong> Clique sur "Répondre" dans ton client email.</p>
+                    <p>La réponse ira automatiquement à: {contact.email}</p>
+                </div>
             </div>
-            <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-left: 4px solid #2563eb;">
-                <h4>💬 Message:</h4>
-                <p style="white-space: pre-line;">{contact.message}</p>
-            </div>
-            <hr style="margin: 30px 0;">
-            <div style="font-size: 12px; color: #6b7280;">
-                <p>📅 Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
-                <p>⚠️ <strong>Pour répondre:</strong> Clique sur "Répondre" dans ton client email.</p>
-                <p>La réponse ira automatiquement à: {contact.email}</p>
-            </div>
-        </div>
-        """
+            """,
+            "text": f"""
+            Nouveau message portfolio:
 
-        # Alternative texte simple pour debug
-        text = f"""
-        Nouveau message portfolio:
+            Nom: {contact.first_name} {contact.last_name}
+            Email: {contact.email}
+            Téléphone: {contact.phone or 'Non fourni'}
+            Sujet: {contact.topic}
 
-        Nom: {contact.first_name} {contact.last_name}
-        Email: {contact.email}
-        Téléphone: {contact.phone or 'Non fourni'}
-        Sujet: {contact.topic}
+            Message:
+            {contact.message}
 
-        Message:
-        {contact.message}
+            ---
+            Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
+            """
+        })
 
-        ---
-        Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
-        """
-
-        # Ajouter les deux versions
-        msg.attach(MIMEText(text, 'plain'))
-        msg.attach(MIMEText(html, 'html'))
-
-        # 3. Envoyer email avec timeout
-        print(f"📤 Connexion SMTP à {EMAIL_HOST}:{EMAIL_PORT}...")
-
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=10) as server:
-            print(f"🔒 Démarrage TLS...")
-            server.starttls()  # Démarre la connexion sécurisée
-
-            print(f"🔑 Authentification...")
-            server.login(EMAIL_USER, EMAIL_PASSWORD)
-
-            print(f"🚀 Envoi du message...")
-            server.send_message(msg)
-            print(f"✅ Email envoyé avec succès!")
-
+        print(f"✅ Email envoyé via Resend (ID: {response.get('id', 'N/A')})")
         return {"success": True, "message": "Email envoyé avec succès"}
 
-    except smtplib.SMTPException as e:
-        print(f"❌ Erreur SMTP: {str(e)}")
-        return {"success": False, "error": f"Erreur SMTP: {str(e)}"}
-    except socket.error as e:
-        print(f"❌ Erreur réseau: {str(e)}")
-        return {"success": False, "error": f"Erreur réseau: {str(e)}"}
     except Exception as e:
-        print(f"❌ Erreur inattendue: {str(e)}")
+        print(f"❌ Erreur Resend: {str(e)}")
         return {"success": False, "error": f"Erreur: {str(e)}"}
 
 
