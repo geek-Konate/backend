@@ -124,9 +124,11 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     }
 
 
-# pour gerer upload
-async def upload_files_to_supabase(files: List[UploadFile]) -> List[str]:
-    urls = []
+
+
+@router.post("/upload/screenshots")
+async def upload_screenshots(files: List[UploadFile] = File(...)):
+    uploaded_urls = []
 
     for file in files:
         ext = file.filename.split(".")[-1]
@@ -134,21 +136,26 @@ async def upload_files_to_supabase(files: List[UploadFile]) -> List[str]:
 
         content = await file.read()
 
-        supabase.storage.from_("portfolio").upload(
-            path=filename,
-            file=content,
-            file_options={"content-type": file.content_type}
-        )
+        try:
+            supabase.storage.from_("portfolio").upload(
+                path=filename,
+                file=content,
+                file_options={
+                    "content-type": file.content_type
+                }
+            )
 
-        public_url = supabase.storage.from_("portfolio").get_public_url(filename)
-        urls.append(public_url["publicURL"])
+            public_url = supabase.storage.from_("portfolio").get_public_url(filename)
+            uploaded_urls.append(public_url["publicURL"])
 
-    return urls
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Supabase upload failed: {str(e)}"
+            )
 
-@router.post("/upload/screenshots")
-async def upload_screenshots(files: List[UploadFile] = File(...)):
-    urls = await upload_files_to_supabase(files)
-    return {"urls": urls}
+    return {"urls": uploaded_urls}
+
 
 
 
