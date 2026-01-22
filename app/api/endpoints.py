@@ -130,25 +130,32 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 async def upload_screenshots(files: List[UploadFile] = File(...)):
     uploaded_urls = []
 
-
     for file in files:
-        # Genère un nom de fichier unique
-        file_extension = file.filename.split('.')[-1]
-        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        ext = file.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
 
-        # lire le contenu du fichier
         content = await file.read()
-        # Envoyer vers Supabase Storage
-        response = supabase.storage.from_('portfolio').upload(unique_filename, content)
-        print("Supabase upload response:", response)
-        if response.get("error"):
-            return {"error": response["error"]}
 
-        # URL d'accès - PAS BESOIN DU /static ici car on monte /uploads
-        url = supabase.storage.from_('portfolio').get_public_url(unique_filename)
-        uploaded_urls.append(url['publicURL'])
+        try:
+            supabase.storage.from_("portfolio").upload(
+                path=filename,
+                file=content,
+                file_options={
+                    "content-type": file.content_type
+                }
+            )
+
+            public_url = supabase.storage.from_("portfolio").get_public_url(filename)
+            uploaded_urls.append(public_url["publicURL"])
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Supabase upload failed: {str(e)}"
+            )
 
     return {"urls": uploaded_urls}
+
 
 
 @router.get("/skills")
