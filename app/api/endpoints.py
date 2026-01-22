@@ -27,7 +27,12 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     return projects
 @router.post("/projects", response_model=schemas.Project)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
-    return crud.create_project(db=db, project=project)
+    try:
+        return crud.create_project(db=db, project=project)
+    except Exception as e:
+        print("❌ Erreur création projet:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/projects/{project_id}", response_model=schemas.Project)

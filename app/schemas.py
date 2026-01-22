@@ -36,8 +36,7 @@ class Project(ProjectBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
-        from_attributes = True  # Pour Pydantic v2
+        from_attributes = True
 
 
 class ContactForm(BaseModel):
