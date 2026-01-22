@@ -1,8 +1,6 @@
-import os
-from supabase import create_client , Client
+# app/storage.py
+from supabase import create_client
+from app.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
 
-from app.storage import SUPABASE_URL, supabase
-
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_API_KEY = os.getenv('SUPABASE_API_KEY')
-supabase : client = create_client(SUPABASE_URL , SUPABASE_API_KEY)
+# Crée le client Supabase
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)

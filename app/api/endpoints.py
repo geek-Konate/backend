@@ -16,7 +16,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 
-from ..storage import supabase
+from app.storage import supabase
 
 load_dotenv()
 router = APIRouter()
