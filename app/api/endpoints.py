@@ -105,7 +105,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
                 filename = screenshot.split("/")[-1]
 
                 try:
-                    res = supabase.storage.from_('portfolio').remove([filename])
+                    res = supabase.storage.from_('porfolio').remove([filename])
                     if res.get('error'):
                         print(f"Failed to remove {filename} : {res['error']}")
 
@@ -139,7 +139,7 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
             return {"error": response["error"]}
 
         # URL d'accès - PAS BESOIN DU /static ici car on monte /uploads
-        url = supabase.storage.from_('portfolio').get_public_url(unique_filename)
+        url = supabase.storage.from_('porfolio').get_public_url(unique_filename)
         uploaded_urls.append(url['publicURL'])
 
     return {"urls": uploaded_urls}
