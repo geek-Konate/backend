@@ -122,13 +122,9 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
         "message": "Project deleted successfully",
         "deleted_id": project_id
     }
-
-
-
-
 @router.post("/upload/screenshots")
 async def upload_screenshots(files: List[UploadFile] = File(...)):
-    uploaded_urls = []
+    urls = []
 
     for file in files:
         ext = file.filename.split(".")[-1]
@@ -140,13 +136,11 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
             supabase.storage.from_("portfolio").upload(
                 path=filename,
                 file=content,
-                file_options={
-                    "content-type": file.content_type
-                }
+                file_options={"content-type": file.content_type}
             )
 
             public_url = supabase.storage.from_("portfolio").get_public_url(filename)
-            uploaded_urls.append(public_url["publicURL"])
+            urls.append(public_url)  # 👈 plus de dict, juste la string
 
         except Exception as e:
             raise HTTPException(
@@ -154,12 +148,7 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
                 detail=f"Supabase upload failed: {str(e)}"
             )
 
-    return {"urls": uploaded_urls}
-
-
-
-
-
+    return {"urls": urls}
 @router.get("/skills")
 def get_skills(db: Session = Depends(get_db)):
     try:
