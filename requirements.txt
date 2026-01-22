@@ -1,5 +1,5 @@
 # requirements.txt - AJOUTEZ cette ligne
-supabase==1.1.2  # ← AJOUTEZ CETTE LIGNE !
+supabase==2.27.2 # ← AJOUTEZ CETTE LIGNE !
 
 # Vos autres dépendances existantes...
 annotated-doc==0.0.4
