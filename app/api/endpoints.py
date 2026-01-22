@@ -65,30 +65,29 @@ def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session 
 
 # modification des screenshots du project
 @router.patch("/projects/{project_id}/screenshots")
-async def update_project_screenshots(project_id: int, new_files: List[UploadFile] = File(...),
-                                     db: Session = Depends(get_db)):
-    # ajouter des screenshot a un project existant
-    # Vérifie le projet
-    db_project = crud.get_project(db, project_id=project_id)
+async def update_project_screenshots(
+    project_id: int,
+    new_files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    db_project = crud.get_project(db, project_id)
     if not db_project:
         raise HTTPException(404, "Project not found")
-    # Upload les nouveaux fichiers
-    upload_result = await upload_screenshots(new_files)
-    new_urls = [item["url"] for item in upload_result["urls"]]
-    # combinaison avec les anciens screenshots
 
-    current_screenshot = db_project.screenshots or []
-    updated_screenshots = current_screenshot + new_urls
-    db_project.screenshots = updated_screenshots
+    new_urls = await upload_files_to_supabase(new_files)
+
+    current = db_project.screenshots or []
+    db_project.screenshots = current + new_urls
+
     db.commit()
     db.refresh(db_project)
 
     return {
         "message": "Screenshots added successfully",
         "new_urls": new_urls,
-        "total_screenshots": len(updated_screenshots),
-        "project": schemas.Project.from_orm(db_project)
+        "total_screenshots": len(db_project.screenshots)
     }
+
 
 
 # suppression d'un project
@@ -126,9 +125,8 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 
 
 # pour gerer upload
-@router.post("/upload/screenshots")
-async def upload_screenshots(files: List[UploadFile] = File(...)):
-    uploaded_urls = []
+async def upload_files_to_supabase(files: List[UploadFile]) -> List[str]:
+    urls = []
 
     for file in files:
         ext = file.filename.split(".")[-1]
@@ -136,25 +134,22 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
 
         content = await file.read()
 
-        try:
-            supabase.storage.from_("portfolio").upload(
-                path=filename,
-                file=content,
-                file_options={
-                    "content-type": file.content_type
-                }
-            )
+        supabase.storage.from_("portfolio").upload(
+            path=filename,
+            file=content,
+            file_options={"content-type": file.content_type}
+        )
 
-            public_url = supabase.storage.from_("portfolio").get_public_url(filename)
-            uploaded_urls.append(public_url["publicURL"])
+        public_url = supabase.storage.from_("portfolio").get_public_url(filename)
+        urls.append(public_url["publicURL"])
 
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Supabase upload failed: {str(e)}"
-            )
+    return urls
 
-    return {"urls": uploaded_urls}
+@router.post("/upload/screenshots")
+async def upload_screenshots(files: List[UploadFile] = File(...)):
+    urls = await upload_files_to_supabase(files)
+    return {"urls": urls}
+
 
 
 
