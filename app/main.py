@@ -24,6 +24,8 @@ app = FastAPI()
 origins = [
     "https://portfolio-frontend-p72r.onrender.com",
     "http://portfolio-frontend-p72r.onrender.com",
+    "https://portfolio-full-stack-qn8u1ccf7-marleys-projects-ec2f4250.vercel.app",
+    "http://portfolio-full-stack-qn8u1ccf7-marleys-projects-ec2f4250.vercel.app",
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
