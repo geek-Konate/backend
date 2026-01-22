@@ -135,6 +135,7 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
         content = await file.read()
         # Envoyer vers Supabase Storage
         response = supabase.storage.from_('porfolio').upload(unique_filename, content)
+        print("Supabase upload response:", response)
         if response.get("error"):
             return {"error": response["error"]}
 
