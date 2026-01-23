@@ -22,15 +22,15 @@ app = FastAPI()
 # ────────────────────────────────────────────────
 
 origins = [
-    "https://portfolio-frontend-p72r.onrender.com",
-    "http://portfolio-frontend-p72r.onrender.com",
-    "https://portfolio-full-stack-qn8u1ccf7-marleys-projects-ec2f4250.vercel.app",
-    "http://portfolio-full-stack-qn8u1ccf7-marleys-projects-ec2f4250.vercel.app",
+    "https://portfolio-full-stack-one.vercel.app",
+
+    # local dev
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
