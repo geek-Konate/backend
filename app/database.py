@@ -7,10 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL"
+    "URL_PUBLIC_DE_LA_BASE"
 )
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL n'est pas défini dans les variables d'environnement")
+    raise ValueError("URL_PUBLIC_DE_LA_BASE n'est pas défini dans les variables d'environnement")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
