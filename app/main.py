@@ -22,7 +22,7 @@ app = FastAPI()
 # ────────────────────────────────────────────────
 
 origins = [
-    "https://portfolio-full-stack-one.vercel.app",
+    "https://portfolio-mamadou-konate.vercel.app",
 
     # local dev
     "http://localhost:3000",
