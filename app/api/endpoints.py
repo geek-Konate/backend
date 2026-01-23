@@ -6,7 +6,8 @@ import shutil
 import uuid
 import os
 
-
+import resend
+import traceback
 from .. import crud, schemas
 from ..database import get_db
 from ..models import Skill
@@ -175,21 +176,51 @@ EMAIL_TO = os.getenv("EMAIL_TO")
 @router.post("/contact")
 async def submit_contact_form(contact: schemas.ContactForm):
     try:
-        print(f"📨 {contact.first_name} ({contact.email})")
+        print(f"📨 Nouveau contact: {contact.first_name} {contact.last_name} ({contact.email})")
+        print(f"📱 Téléphone: {contact.phone}")
+        print(f"🏷️ Sujet: {contact.topic}")
+        print(f"📝 Message: {contact.message[:100]}...")
 
         # Vérifier la configuration
         if not RESEND_API_KEY:
-            print("❌ RESEND_API_KEY non configurée")
-            return {"success": False, "error": "Configuration Resend manquante"}
+            error_msg = "RESEND_API_KEY non configurée"
+            print(f"❌ {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg,
+                "details": "Vérifiez les variables d'environnement"
+            }
 
-        # Importer Resend
-        import resend
-
-        # Configurer Resend
+        # Configuration de Resend
         resend.api_key = RESEND_API_KEY
 
-        # Envoyer l'email
-        response = resend.Emails.send({
+        # Vérifier l'email from
+        if not RESEND_FROM_EMAIL:
+            error_msg = "RESEND_FROM_EMAIL non configurée"
+            print(f"❌ {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg,
+                "details": "L'adresse d'expédition n'est pas configurée"
+            }
+
+        # Vérifier l'email to
+        if not EMAIL_TO:
+            error_msg = "EMAIL_TO non configurée"
+            print(f"❌ {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg,
+                "details": "L'adresse de destination n'est pas configurée"
+            }
+
+        print(f"📧 Configuration Resend OK")
+        print(f"  From: {RESEND_FROM_EMAIL}")
+        print(f"  To: {EMAIL_TO}")
+        print(f"  API Key présente: {'Oui' if RESEND_API_KEY else 'Non'}")
+
+        # Préparer le contenu de l'email
+        email_content = {
             "from": RESEND_FROM_EMAIL,
             "to": [EMAIL_TO],
             "reply_to": f"{contact.first_name} {contact.last_name} <{contact.email}>",
@@ -215,30 +246,75 @@ async def submit_contact_form(contact: schemas.ContactForm):
                 </div>
             </div>
             """,
-            "text": f"""
-            Nouveau message portfolio:
+            "text": f"""Nouveau message portfolio:
 
-            Nom: {contact.first_name} {contact.last_name}
-            Email: {contact.email}
-            Téléphone: {contact.phone or 'Non fourni'}
-            Sujet: {contact.topic}
+Nom: {contact.first_name} {contact.last_name}
+Email: {contact.email}
+Téléphone: {contact.phone or 'Non fourni'}
+Sujet: {contact.topic}
 
-            Message:
-            {contact.message}
+Message:
+{contact.message}
 
-            ---
-            Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
-            """
-        })
+---
+Reçu le {datetime.now().strftime('%d/%m/%Y à %H:%M')}"""
+        }
 
-        print(f"✅ Email envoyé via Resend (ID: {response.get('id', 'N/A')})")
-        return {"success": True, "message": "Email envoyé avec succès"}
+        print("📤 Tentative d'envoi via Resend...")
+
+        # Envoyer l'email avec timeout
+        import asyncio
+        try:
+            # Version asynchrone
+            response = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: resend.Emails.send(email_content)
+                ),
+                timeout=10.0
+            )
+
+            print(f"✅ Email envoyé via Resend")
+            print(f"📨 ID de l'email: {response.get('id', 'N/A')}")
+            print(f"🎯 Destinataire: {EMAIL_TO}")
+
+            return {
+                "success": True,
+                "message": "Votre message a été envoyé avec succès !",
+                "email_id": response.get('id')
+            }
+
+        except asyncio.TimeoutError:
+            error_msg = "Timeout lors de l'envoi de l'email"
+            print(f"⏰ {error_msg}")
+            return {
+                "success": False,
+                "error": "Le serveur met trop de temps à répondre",
+                "details": error_msg
+            }
 
     except Exception as e:
-        print(f"❌ Erreur Resend: {str(e)}")
-        return {"success": False, "error": f"Erreur: {str(e)}"}
+        error_msg = str(e)
+        print(f"❌ Erreur détaillée: {error_msg}")
+        print(f"🔍 Stack trace:")
+        traceback.print_exc()
 
+        # Détection des erreurs Resend courantes
+        if "unauthorized" in error_msg.lower():
+            details = "Clé API Resend invalide"
+        elif "domain" in error_msg.lower() or "from" in error_msg.lower():
+            details = "L'adresse email d'expédition n'est pas vérifiée dans Resend"
+        elif "validation" in error_msg.lower():
+            details = "Format d'email invalide"
+        else:
+            details = "Erreur lors de l'envoi de l'email"
 
+        return {
+            "success": False,
+            "error": "Erreur lors de l'envoi du message",
+            "details": details,
+            "debug": error_msg
+        }
 @router.get("/mobile-test")
 async def mobile_test():
     """Test spécifique pour mobile"""
@@ -257,25 +333,37 @@ async def mobile_test():
 
 @router.get("/test-email")
 async def test_email():
-    """Test la connexion SMTP"""
+    """Route de test pour vérifier la configuration Resend"""
     try:
-        # Test de connexion sans envoyer d'email
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASSWORD)
-            print("✅ Connexion SMTP réussie")
-            server.quit()
+        import resend
+
+        if not RESEND_API_KEY:
+            return {"status": "error", "message": "RESEND_API_KEY non configurée"}
+
+        resend.api_key = RESEND_API_KEY
+
+        # Test simple
+        test_response = resend.Emails.send({
+            "from": RESEND_FROM_EMAIL,
+            "to": [EMAIL_TO],
+            "subject": "Test Resend - Portfolio",
+            "html": "<p>Ceci est un test</p>",
+            "text": "Ceci est un test"
+        })
 
         return {
-            "success": True,
-            "message": "Connexion SMTP OK",
-            "host": EMAIL_HOST,
-            "port": EMAIL_PORT
+            "status": "success",
+            "message": "Test d'email envoyé",
+            "response": test_response
         }
+
     except Exception as e:
         return {
-            "success": False,
-            "error": str(e),
-            "host": EMAIL_HOST,
-            "port": EMAIL_PORT
+            "status": "error",
+            "message": str(e),
+            "config": {
+                "has_api_key": bool(RESEND_API_KEY),
+                "from_email": RESEND_FROM_EMAIL,
+                "to_email": EMAIL_TO
+            }
         }
