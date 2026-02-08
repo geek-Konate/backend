@@ -155,7 +155,7 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
 def get_skills(db: Session = Depends(get_db)):
     try:
         # Essaie d'importer dynamiquement
-        from ..models import Skill
+
         skills = db.query(Skill).order_by(Skill.display_order).all()
         return skills
     except ImportError:
