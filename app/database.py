@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv(
-    "URL_PUBLIC_DE_LA_BASE"
+    "DATABASE_URL"
 )
 if not DATABASE_URL:
     raise ValueError("URL_PUBLIC_DE_LA_BASE n'est pas défini dans les variables d'environnement")
