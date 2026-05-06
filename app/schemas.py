@@ -3,7 +3,6 @@ from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
 from datetime import datetime
 
-
 class ProjectBase(BaseModel):
     title: str
     description: str
@@ -14,10 +13,8 @@ class ProjectBase(BaseModel):
     image_url: Optional[str] = None
     featured: bool = False
 
-
 class ProjectCreate(ProjectBase):
     pass
-
 
 class ProjectUpdate(BaseModel):
     title: Optional[str] = None
@@ -29,7 +26,6 @@ class ProjectUpdate(BaseModel):
     image_url: Optional[str] = None
     featured: Optional[bool] = None
 
-
 class Project(ProjectBase):
     id: int
     created_at: datetime
@@ -37,7 +33,6 @@ class Project(ProjectBase):
 
     class Config:
         from_attributes = True
-
 
 class ContactForm(BaseModel):
     first_name: str
